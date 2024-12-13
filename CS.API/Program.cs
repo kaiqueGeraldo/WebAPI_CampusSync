@@ -49,7 +49,11 @@ builder.Services.AddDbContext<ProjetoDbContext>(options =>
 var app = builder.Build();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API CampusSync v1");
+    c.RoutePrefix = string.Empty; // Faz a documentação do Swagger estar na raiz
+});
 
 app.UseHttpsRedirection();
 

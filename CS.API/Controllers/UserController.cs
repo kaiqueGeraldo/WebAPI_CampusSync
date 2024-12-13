@@ -35,7 +35,6 @@ public class UserController : ControllerBase
             Email = user.Email,
             UrlImagem = user.UrlImagem,
             UniversidadeNome = user.UniversidadeNome,
-            UniversidadeCNPJ = user.UniversidadeCNPJ,
             UniversidadeContatoInfo = user.UniversidadeContatoInfo
         };
 
