@@ -24,11 +24,16 @@ namespace CS.API.Controllers
                 .Include(c => c.Curso)
                 .Select(c => new ColaboradorResponse
                 {
-                    Id = c.Id,
                     Nome = c.Nome,
+                    CPF = c.CPF,
+                    RG = c.RG,
+                    Email = c.Email,
+                    Telefone = c.Telefone,
                     Cargo = c.Cargo,
                     NumeroRegistro = c.NumeroRegistro,
                     DataAdmissao = c.DataAdmissao,
+                    DataNascimento = c.DataNascimento,
+                    Endereco = c.Endereco,
                     CursoNome = c.Curso != null ? c.Curso.Nome : null
                 })
                 .ToListAsync();
@@ -45,11 +50,16 @@ namespace CS.API.Controllers
                 .Where(c => c.Id == id)
                 .Select(c => new ColaboradorResponse
                 {
-                    Id = c.Id,
                     Nome = c.Nome,
+                    CPF = c.CPF,
+                    RG = c.RG,
+                    Email = c.Email,
+                    Telefone = c.Telefone,
                     Cargo = c.Cargo,
                     NumeroRegistro = c.NumeroRegistro,
                     DataAdmissao = c.DataAdmissao,
+                    DataNascimento = c.DataNascimento,
+                    Endereco = c.Endereco,
                     CursoNome = c.Curso != null ? c.Curso.Nome : null
                 })
                 .FirstOrDefaultAsync();
@@ -77,6 +87,7 @@ namespace CS.API.Controllers
                 Nome = colaboradorRequest.Nome,
                 CPF = colaboradorRequest.CPF,
                 RG = colaboradorRequest.RG,
+                Email = colaboradorRequest.Email,
                 Telefone = colaboradorRequest.Telefone,
                 TituloEleitor = colaboradorRequest.TituloEleitor,
                 EstadoCivil = colaboradorRequest.EstadoCivil,
@@ -106,11 +117,16 @@ namespace CS.API.Controllers
 
             var colaboradorResponse = new ColaboradorResponse
             {
-                Id = colaborador.Id,
                 Nome = colaborador.Nome,
+                CPF = colaborador.CPF,
+                RG = colaborador.RG,
+                Email = colaborador.Email,
+                Telefone = colaborador.Telefone,
                 Cargo = colaborador.Cargo,
                 NumeroRegistro = colaborador.NumeroRegistro,
                 DataAdmissao = colaborador.DataAdmissao,
+                DataNascimento = colaborador.DataNascimento,
+                Endereco = colaborador.Endereco,
                 CursoNome = colaborador.Curso?.Nome
             };
 
@@ -156,6 +172,7 @@ namespace CS.API.Controllers
             colaborador.Cargo = colaboradorRequest.Cargo;
             colaborador.NumeroRegistro = colaboradorRequest.NumeroRegistro;
             colaborador.DataAdmissao = colaboradorRequest.DataAdmissao;
+            colaborador.Endereco = colaboradorRequest.Endereco;
             colaborador.Curso = curso;
 
             _context.Entry(colaborador).State = EntityState.Modified;

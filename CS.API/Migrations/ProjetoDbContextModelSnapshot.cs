@@ -71,7 +71,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("CursoId");
 
-                    b.ToTable("Disciplina");
+                    b.ToTable("Disciplinas");
                 });
 
             modelBuilder.Entity("CS.Models.Endereco", b =>

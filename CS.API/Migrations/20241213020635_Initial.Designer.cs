@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CS.API.Migrations
 {
     [DbContext(typeof(ProjetoDbContext))]
-    [Migration("20241211202816_UpdateUser")]
-    partial class UpdateUser
+    [Migration("20241213020635_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,7 +74,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("CursoId");
 
-                    b.ToTable("Disciplina");
+                    b.ToTable("Disciplinas");
                 });
 
             modelBuilder.Entity("CS.Models.Endereco", b =>

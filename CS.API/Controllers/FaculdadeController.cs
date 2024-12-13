@@ -14,17 +14,27 @@ public class FaculdadeController : ControllerBase
         _context = context;
     }
 
-    // GET: api/Faculdade
+    // GET: api/Faculdade?cpf=12345678900
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<FaculdadeResponse>>> GetFaculdades([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<IEnumerable<FaculdadeResponse>>> GetFaculdades([FromQuery] string cpf)
     {
+        if (string.IsNullOrEmpty(cpf))
+        {
+            return BadRequest("O CPF deve ser informado.");
+        }
+
         var faculdades = await _context.Faculdades
             .Include(f => f.User)
             .Include(f => f.Cursos)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Include(f => f.Endereco)
+            .Where(f => f.UserCPF == cpf)
             .Select(f => MapFaculdadeToResponse(f))
             .ToListAsync();
+
+        if (!faculdades.Any())
+        {
+            return NotFound("Nenhuma faculdade encontrada para o CPF informado.");
+        }
 
         return Ok(faculdades);
     }
@@ -36,6 +46,7 @@ public class FaculdadeController : ControllerBase
         var faculdade = await _context.Faculdades
             .Include(f => f.User)
             .Include(f => f.Cursos)
+            .Include(f => f.Endereco)
             .FirstOrDefaultAsync(f => f.Id == id);
 
         if (faculdade == null)
@@ -59,6 +70,14 @@ public class FaculdadeController : ControllerBase
             return BadRequest("Usuário não encontrado.");
         }
 
+        var existingFaculdade = await _context.Faculdades
+            .FirstOrDefaultAsync(f => f.UserCPF == request.UserCPF && f.CNPJ == request.CNPJ);
+
+        if (existingFaculdade != null)
+        {
+            return BadRequest("Usuário já tem uma faculdade com este CNPJ.");
+        }
+
         var faculdade = new Faculdade
         {
             Nome = request.Nome,
@@ -75,7 +94,7 @@ public class FaculdadeController : ControllerBase
                 CEP = request.Endereco.CEP
             },
             Tipo = request.Tipo,
-            UserCPF = user.CPF 
+            UserCPF = user.CPF
         };
 
         _context.Faculdades.Add(faculdade);
@@ -134,7 +153,7 @@ public class FaculdadeController : ControllerBase
         return NoContent();
     }
 
-    private FaculdadeResponse MapFaculdadeToResponse(Faculdade faculdade)
+    private static FaculdadeResponse MapFaculdadeToResponse(Faculdade faculdade)
     {
         return new FaculdadeResponse
         {
@@ -157,7 +176,11 @@ public class FaculdadeController : ControllerBase
             Cursos = faculdade.Cursos.Select(c => new CursoResponse
             {
                 Id = c.Id,
-                Nome = c.Nome
+                Nome = c.Nome,
+                Mensalidade = c.Mensalidade, 
+                FaculdadeId = c.FaculdadeId,
+                FaculdadeNome = c.Faculdade.Nome,
+                ColaboradorNome = c.Colaborador?.Nome,
             }).ToList()
         };
     }

@@ -1,8 +1,10 @@
 ﻿using CS.API.Data;
 using CS.API.Services;
 using CS.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -19,8 +21,16 @@ public class UserController : ControllerBase
 
     // Endpoint para obter informações do usuário logado
     [HttpGet("profile")]
-    public async Task<IActionResult> GetUserProfile([FromQuery] string cpf)
+    [Authorize]
+    public async Task<IActionResult> GetUserProfile()
     {
+        var cpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(cpf))
+        {
+            return Unauthorized("Usuário não autenticado.");
+        }
+
         var user = await _context.Users.FirstOrDefaultAsync(u => u.CPF == cpf);
 
         if (user == null)
@@ -35,6 +45,7 @@ public class UserController : ControllerBase
             Email = user.Email,
             UrlImagem = user.UrlImagem,
             UniversidadeNome = user.UniversidadeNome,
+            UniversidadeCNPJ = user.UniversidadeCNPJ,
             UniversidadeContatoInfo = user.UniversidadeContatoInfo
         };
 
@@ -43,76 +54,94 @@ public class UserController : ControllerBase
 
     // Endpoint para verificar se um e-mail está cadastrado
     [HttpGet("verify-email")]
+    [AllowAnonymous]
     public async Task<IActionResult> VerifyEmail([FromQuery] string email)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (!IsValidEmail(email))
+        {
+            return BadRequest("E-mail inválido.");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
 
         if (user == null)
         {
             return NotFound("E-mail não encontrado.");
         }
 
-        var usuarioDTO = new UserDTO
-        {
-            CPF = user.CPF,
-            Nome = user.Nome,
-            Email = user.Email,
-            UrlImagem = user.UrlImagem,
-            UniversidadeNome = user.UniversidadeNome,
-            UniversidadeCNPJ = user.UniversidadeCNPJ,
-            UniversidadeContatoInfo = user.UniversidadeContatoInfo
-        };
-
-        return Ok(usuarioDTO);
+        return Ok(new { Message = "E-mail está cadastrado." });
     }
 
-    // Endpoint para atualizar as informações do usuário e da universidade
+    // Endpoint para atualizar as informações do usuário logado
     [HttpPut("update")]
-    public async Task<IActionResult> Update(UserUpdateRequest request)
+    [Authorize]
+    public async Task<IActionResult> Update([FromBody] UserUpdateRequest request)
     {
-        if (string.IsNullOrEmpty(request.CPF))
+        var cpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(cpf))
         {
-            return BadRequest("CPF é obrigatório.");
+            return Unauthorized("Usuário não autenticado.");
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.CPF == request.CPF);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.CPF == cpf);
 
         if (user == null)
         {
             return NotFound("Usuário não encontrado.");
         }
 
-        user.Nome = request.Nome ?? user.Nome;
-        user.Email = request.Email ?? user.Email;
-        user.UrlImagem = request.UrlImagem ?? user.UrlImagem;
+        // Atualizações condicionais
+        user.Nome = !string.IsNullOrEmpty(request.Nome) ? request.Nome : user.Nome;
+        user.Email = !string.IsNullOrEmpty(request.Email) && IsValidEmail(request.Email) ? request.Email : user.Email;
+        user.UrlImagem = !string.IsNullOrEmpty(request.UrlImagem) ? request.UrlImagem : user.UrlImagem;
 
-        user.UniversidadeNome = request.UniversidadeNome ?? user.UniversidadeNome;
-        user.UniversidadeCNPJ = request.UniversidadeCNPJ ?? user.UniversidadeCNPJ;
-        user.UniversidadeContatoInfo = request.UniversidadeContatoInfo ?? user.UniversidadeContatoInfo;
+        // Dados da universidade
+        user.UniversidadeNome = !string.IsNullOrEmpty(request.UniversidadeNome) ? request.UniversidadeNome : user.UniversidadeNome;
+        user.UniversidadeCNPJ = !string.IsNullOrEmpty(request.UniversidadeCNPJ) ? request.UniversidadeCNPJ : user.UniversidadeCNPJ;
+        user.UniversidadeContatoInfo = !string.IsNullOrEmpty(request.UniversidadeContatoInfo) ? request.UniversidadeContatoInfo : user.UniversidadeContatoInfo;
 
         _context.Users.Update(user);
         await _context.SaveChangesAsync();
 
         var usuarioDTO = new UserDTO
         {
-            CPF = user.CPF,
             Nome = user.Nome,
             Email = user.Email,
             UrlImagem = user.UrlImagem,
-            Token = _authService.CreateToken(user),
             UniversidadeNome = user.UniversidadeNome,
             UniversidadeCNPJ = user.UniversidadeCNPJ,
-            UniversidadeContatoInfo = user.UniversidadeContatoInfo
+            UniversidadeContatoInfo = user.UniversidadeContatoInfo,
+            Token = _authService.CreateToken(user)
         };
 
         return Ok(usuarioDTO);
     }
 
-    // Exemplo de endpoint para listar todos os usuários (se necessário)
+    // Endpoint para listar usuários com paginação
     [HttpGet("all-users")]
-    public async Task<IActionResult> GetAllUsers()
+    public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10)
     {
-        var users = await _context.Users.ToListAsync();
+        var users = await _context.Users
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => new
+            {
+                u.CPF,
+                u.Nome,
+                u.Email,
+                u.UniversidadeNome,
+                u.Faculdades
+            })
+            .ToListAsync();
+
         return Ok(users);
+    }
+
+    // Função auxiliar para validar e-mails
+    private bool IsValidEmail(string email)
+    {
+        var emailRegex = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+        return Regex.IsMatch(email, emailRegex, RegexOptions.IgnoreCase);
     }
 }

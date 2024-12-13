@@ -17,6 +17,7 @@ namespace CS.API.Data
         public DbSet<Curso> Cursos { get; set; }
         public DbSet<Endereco> Enderecos { get; set; }
         public DbSet<Turma> Turmas { get; set; }
+        public DbSet<Disciplina> Disciplinas { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -74,14 +75,14 @@ namespace CS.API.Data
             modelBuilder.Entity<Estudante>()
                 .HasOne(p => p.Endereco)
                 .WithOne() 
-                .HasForeignKey<Estudante>(p => p.Id) 
+                .HasForeignKey<Estudante>(p => p.CPF) 
                 .OnDelete(DeleteBehavior.Cascade); // Quando Estudante for excluído, exclui o Endereço
 
             // Configuração do relacionamento Colaborador -> Endereco
             modelBuilder.Entity<Colaborador>()
                 .HasOne(p => p.Endereco)
                 .WithOne() 
-                .HasForeignKey<Colaborador>(p => p.Id) 
+                .HasForeignKey<Colaborador>(p => p.CPF) 
                 .OnDelete(DeleteBehavior.Cascade); // Quando Colaborador for excluído, exclui o Endereço
             
             // Configuração do relacionamento Pessoa -> Endereco

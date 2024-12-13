@@ -22,16 +22,23 @@ namespace CS.API.Controllers
         {
             var estudantes = await _context.Estudantes
                 .Include(e => e.Turma)
-                .Select(e => new EstudanteResponse
-                {
-                    Id = e.Id,
-                    Nome = e.Nome,
-                    NumeroMatricula = e.NumeroMatricula,
-                    DataMatricula = e.DataMatricula,
-                    TelefonePai = e.TelefonePai,
-                    TelefoneMae = e.TelefoneMae,
-                    TurmaNome = e.Turma.Nome
-                })
+               .Select(e => new EstudanteResponse
+               {
+                   Nome = e.Nome,
+                   CPF = e.CPF,
+                   RG = e.RG,
+                   Email = e.Email,
+                   Telefone = e.Telefone,
+                   NumeroMatricula = e.NumeroMatricula,
+                   DataMatricula = e.DataMatricula,
+                   DataNascimento = e.DataNascimento,
+                   NomePai = e.NomePai,
+                   NomeMae = e.NomeMae,
+                   TelefonePai = e.TelefonePai,
+                   TelefoneMae = e.TelefoneMae,
+                   Endereco = e.Endereco,
+                   TurmaNome = e.Turma != null ? e.Turma.Nome : string.Empty
+               })
                 .ToListAsync();
 
             return Ok(estudantes);
@@ -46,13 +53,20 @@ namespace CS.API.Controllers
                 .Where(e => e.Id == id)
                 .Select(e => new EstudanteResponse
                 {
-                    Id = e.Id,
                     Nome = e.Nome,
+                    CPF = e.CPF,
+                    RG = e.RG,
+                    Email = e.Email,
+                    Telefone = e.Telefone,
                     NumeroMatricula = e.NumeroMatricula,
                     DataMatricula = e.DataMatricula,
+                    DataNascimento = e.DataNascimento,
+                    NomePai = e.NomePai,
+                    NomeMae = e.NomeMae,
                     TelefonePai = e.TelefonePai,
                     TelefoneMae = e.TelefoneMae,
-                    TurmaNome = e.Turma.Nome
+                    Endereco = e.Endereco,
+                    TurmaNome = e.Turma != null ? e.Turma.Nome : string.Empty
                 })
                 .FirstOrDefaultAsync();
 
@@ -73,6 +87,7 @@ namespace CS.API.Controllers
                 Nome = estudanteRequest.Nome,
                 CPF = estudanteRequest.CPF,
                 RG = estudanteRequest.RG,
+                Email = estudanteRequest.Email,
                 Telefone = estudanteRequest.Telefone,
                 TituloEleitor = estudanteRequest.TituloEleitor,
                 EstadoCivil = estudanteRequest.EstadoCivil,
@@ -103,13 +118,20 @@ namespace CS.API.Controllers
 
             var estudanteResponse = new EstudanteResponse
             {
-                Id = estudante.Id,
                 Nome = estudante.Nome,
+                CPF = estudante.CPF,
+                RG = estudante.RG,
+                Email = estudante.Email,
+                Telefone = estudante.Telefone,
                 NumeroMatricula = estudante.NumeroMatricula,
                 DataMatricula = estudante.DataMatricula,
+                DataNascimento = estudante.DataNascimento,
+                NomePai = estudante.NomePai,
+                NomeMae = estudante.NomeMae,
                 TelefonePai = estudante.TelefonePai,
                 TelefoneMae = estudante.TelefoneMae,
-                TurmaNome = estudante.Turma?.Nome
+                Endereco = estudante.Endereco,
+                TurmaNome = estudante.Turma != null ? estudante.Turma.Nome : string.Empty
             };
 
             return CreatedAtAction("GetEstudante", new { id = estudante.Id }, estudanteResponse);
@@ -146,6 +168,7 @@ namespace CS.API.Controllers
             estudante.DataMatricula = estudanteRequest.DataMatricula;
             estudante.TelefonePai = estudanteRequest.TelefonePai;
             estudante.TelefoneMae = estudanteRequest.TelefoneMae;
+            estudante.Endereco = estudanteRequest.Endereco;
             estudante.TurmaId = estudanteRequest.TurmaId;
 
             _context.Entry(estudante).State = EntityState.Modified;

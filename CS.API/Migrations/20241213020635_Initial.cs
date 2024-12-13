@@ -99,7 +99,7 @@ namespace CS.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Disciplina",
+                name: "Disciplinas",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -110,9 +110,9 @@ namespace CS.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Disciplina", x => x.Id);
+                    table.PrimaryKey("PK_Disciplinas", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Disciplina_Cursos_CursoId",
+                        name: "FK_Disciplinas_Cursos_CursoId",
                         column: x => x.CursoId,
                         principalTable: "Cursos",
                         principalColumn: "Id",
@@ -150,6 +150,7 @@ namespace CS.API.Migrations
                     RG = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Telefone = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DataNascimento = table.Column<DateTime>(type: "datetime2", nullable: false),
                     TituloEleitor = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     EstadoCivil = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Nacionalidade = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -157,7 +158,6 @@ namespace CS.API.Migrations
                     Escolaridade = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     NomePai = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     NomeMae = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DataNascimento = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UrlImagePerfil = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Discriminator = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
                     Cargo = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -197,8 +197,8 @@ namespace CS.API.Migrations
                 column: "FaculdadeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Disciplina_CursoId",
-                table: "Disciplina",
+                name: "IX_Disciplinas_CursoId",
+                table: "Disciplinas",
                 column: "CursoId");
 
             migrationBuilder.CreateIndex(
@@ -228,7 +228,7 @@ namespace CS.API.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Disciplina");
+                name: "Disciplinas");
 
             migrationBuilder.DropTable(
                 name: "Pessoas");

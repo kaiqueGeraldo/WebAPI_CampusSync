@@ -1,4 +1,5 @@
 ﻿using CS.Models;
+using System.Text.Json.Serialization;
 
 public class Faculdade
 {
@@ -12,8 +13,8 @@ public class Faculdade
 
     public ICollection<Curso> Cursos { get; set; } = new List<Curso>();
 
-    public string UserCPF { get; set; } = string.Empty;
-    public User? User { get; set; } = new User();
+    public string UserCPF { get; set; } = string.Empty; 
+    public User User { get; set; }
 
     public enum TipoFacul
     {

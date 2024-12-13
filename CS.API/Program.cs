@@ -22,13 +22,20 @@ builder.Services.AddCors(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        var secretKey = builder.Configuration.GetSection("Jwt:SecretKey").Value;
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            throw new Exception("Jwt:SecretKey n�o configurado no appsettings.json.");
+        }
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
-                .GetBytes(builder.Configuration.GetSection("Jwt:SecretKey").Value)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
             ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateAudience = false,
+            ValidateLifetime = true, 
+            ClockSkew = TimeSpan.Zero
         };
     });
 
@@ -49,11 +56,7 @@ builder.Services.AddDbContext<ProjetoDbContext>(options =>
 var app = builder.Build();
 
 app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API CampusSync v1");
-    c.RoutePrefix = string.Empty; // Faz a documentação do Swagger estar na raiz
-});
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 

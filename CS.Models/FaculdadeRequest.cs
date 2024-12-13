@@ -12,5 +12,4 @@ namespace CS.Models
         public Faculdade.TipoFacul Tipo { get; set; }
         public string UserCPF { get; set; }
     }
-
 }
