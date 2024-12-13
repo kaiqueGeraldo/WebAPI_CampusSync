@@ -28,14 +28,16 @@ public class UserController : ControllerBase
 
         if (string.IsNullOrEmpty(cpf))
         {
-            return Unauthorized("Usuário não autenticado.");
+            return Unauthorized(new { message = "Usuário não autenticado ou CPF ausente." });
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.CPF == cpf);
+        var user = await _context.Users
+                                 .AsNoTracking()
+                                 .FirstOrDefaultAsync(u => u.CPF == cpf);
 
         if (user == null)
         {
-            return NotFound("Usuário não encontrado.");
+            return NotFound(new { message = "Usuário não encontrado." });
         }
 
         var usuarioDTO = new UserDTO
