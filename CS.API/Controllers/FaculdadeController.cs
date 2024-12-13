@@ -62,7 +62,6 @@ public class FaculdadeController : ControllerBase
     public async Task<ActionResult<FaculdadeResponse>> CriarFaculdade(FaculdadeRequest request)
     {
         var user = await _context.Users
-            .Include(u => u.Faculdades)
             .FirstOrDefaultAsync(u => u.CPF == request.UserCPF);
 
         if (user == null)
@@ -100,14 +99,10 @@ public class FaculdadeController : ControllerBase
 
         if (request.CursosOferecidos != null && request.CursosOferecidos.Any())
         {
-            var cursos = await _context.Cursos
-                .Where(c => request.CursosOferecidos.Any(nome => c.Nome.Contains(nome)))
-                .ToListAsync();
-
-            if (cursos.Count != request.CursosOferecidos.Count)
+            var cursos = request.CursosOferecidos.Select(nome => new Curso
             {
-                return BadRequest("Alguns dos cursos fornecidos não foram encontrados no banco de dados.");
-            }
+                Nome = nome,
+            }).ToList();
 
             faculdade.Cursos = cursos;
         }
@@ -115,12 +110,9 @@ public class FaculdadeController : ControllerBase
         _context.Faculdades.Add(faculdade);
         await _context.SaveChangesAsync();
 
-
-        _context.Faculdades.Add(faculdade);
-        await _context.SaveChangesAsync();
-
         return CreatedAtAction(nameof(GetFaculdade), new { id = faculdade.Id }, MapFaculdadeToResponse(faculdade));
     }
+
 
     // PUT: api/Faculdade/{id}
     [HttpPut("{id}")]
