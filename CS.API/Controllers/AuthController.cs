@@ -1,4 +1,5 @@
 ﻿using CS.API.Data;
+using CS.API.Services;
 using CS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,36 +14,15 @@ public class AuthController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly ProjetoDbContext _context;
+    private readonly IAuthService _authService;
 
-    public AuthController(IConfiguration configuration, ProjetoDbContext context)
+    public AuthController(IConfiguration configuration, ProjetoDbContext context, IAuthService authService)
     {
         _configuration = configuration;
         _context = context;
+        _authService = authService;
     }
 
-    #region Token Generation
-
-    private string CreateToken(User user)
-    {
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Email),
-            new Claim(ClaimTypes.Name, user.Nome),
-            new Claim(ClaimTypes.Email, user.Email),
-        };
-
-        var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-        var token = new JwtSecurityToken(
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
-            signingCredentials: creds);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    #endregion
 
     #region Password Handling
 
@@ -84,7 +64,7 @@ public class AuthController : ControllerBase
             return Unauthorized("Credenciais inválidas.");
         }
 
-        var token = CreateToken(user);
+        var token = _authService.CreateToken(user);
 
         var userDTO = MapUserToDTO(user, token);
 
@@ -124,7 +104,7 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var token = CreateToken(user);
+        var token = _authService.CreateToken(user);
 
         var userDTO = new UserDTO
         {

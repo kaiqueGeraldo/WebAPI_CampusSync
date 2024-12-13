@@ -45,7 +45,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("FaculdadeId");
 
-                    b.ToTable("Cursos");
+                    b.ToTable("Cursos", (string)null);
                 });
 
             modelBuilder.Entity("CS.Models.Disciplina", b =>
@@ -71,7 +71,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("CursoId");
 
-                    b.ToTable("Disciplinas");
+                    b.ToTable("Disciplinas", (string)null);
                 });
 
             modelBuilder.Entity("CS.Models.Endereco", b =>
@@ -108,7 +108,7 @@ namespace CS.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Enderecos");
+                    b.ToTable("Enderecos", (string)null);
                 });
 
             modelBuilder.Entity("CS.Models.Pessoa", b =>
@@ -178,7 +178,7 @@ namespace CS.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Pessoas");
+                    b.ToTable("Pessoas", (string)null);
 
                     b.HasDiscriminator().HasValue("Pessoa");
 
@@ -207,7 +207,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("CursoId");
 
-                    b.ToTable("Turmas");
+                    b.ToTable("Turmas", (string)null);
                 });
 
             modelBuilder.Entity("CS.Models.User", b =>
@@ -243,7 +243,7 @@ namespace CS.API.Migrations
 
                     b.HasKey("CPF");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Faculdade", b =>
@@ -278,7 +278,7 @@ namespace CS.API.Migrations
 
                     b.HasIndex("UserCPF");
 
-                    b.ToTable("Faculdades");
+                    b.ToTable("Faculdades", (string)null);
                 });
 
             modelBuilder.Entity("CS.Models.Colaborador", b =>
