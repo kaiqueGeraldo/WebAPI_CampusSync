@@ -159,7 +159,7 @@ public class UserController : ControllerBase
     }
 
     // Função auxiliar para validar cpf
-    public bool IsValidCpf(string cpf)
+    private bool IsValidCpf(string cpf)
     {
         cpf = new string(cpf.Where(char.IsDigit).ToArray());
 
