@@ -109,6 +109,55 @@ namespace CS.API.Controllers
             return Ok(response);
         }
 
+        // Cursos por paginação
+        [HttpGet("cursos")]
+        public async Task<ActionResult<IEnumerable<CursoResponse>>> GetCursos(
+        [FromQuery] string search = "",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+        {
+            var query = _context.Cursos.AsQueryable();
+
+            // Filtro por nome
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(c => c.Nome.Contains(search));
+            }
+
+            // Paginação
+            var totalCursos = await query.CountAsync();
+            var cursos = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var response = new
+            {
+                TotalCursos = totalCursos,
+                Cursos = cursos.Select(c => new CursoResponse
+                {
+                    Id = c.Id,
+                    Nome = c.Nome
+                }).ToList()
+            };
+
+            return Ok(response);
+        }
+
+        // cursos por faculdade
+        [HttpGet("faculdade/{faculdadeId}")]
+        public async Task<IActionResult> ObterCursosPorFaculdade(int faculdadeId)
+        {
+            var cursos = await _context.Cursos
+                .Where(c => c.FaculdadeId == faculdadeId)
+                .ToListAsync();
+
+            if (cursos == null || !cursos.Any())
+                return NotFound("Nenhum curso encontrado para a faculdade especificada.");
+
+            return Ok(cursos);
+        }
+
         // Criar um curso
         [HttpPost]
         public async Task<ActionResult<CursoResponse>> CreateCurso(CursoRequest request)
@@ -117,83 +166,28 @@ namespace CS.API.Controllers
             if (faculdade == null)
                 return BadRequest("Faculdade não encontrada.");
 
-            if (request.Turmas.Count != request.QuantidadeTurmas)
-                return BadRequest("A quantidade de turmas fornecida não corresponde à quantidade especificada.");
-
-            var periodosDuplicados = request.Turmas
-                .GroupBy(t => t.Periodo)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-
-            if (periodosDuplicados.Any())
-                return BadRequest($"Os seguintes períodos foram repetidos: {string.Join(", ", periodosDuplicados)}.");
+            // Verifica se o curso já existe na faculdade
+            var cursoExistente = await _context.Cursos
+                .FirstOrDefaultAsync(c => c.Nome == request.Nome && c.FaculdadeId == request.FaculdadeId);
+            if (cursoExistente != null)
+                return BadRequest("Este curso já está cadastrado para esta faculdade.");
 
             var curso = new Curso
             {
                 Nome = request.Nome,
-                Mensalidade = request.Mensalidade,
                 FaculdadeId = request.FaculdadeId
             };
-
-            // Adiciona as turmas associadas
-            foreach (var turmaRequest in request.Turmas)
-            {
-                var turma = new Turma
-                {
-                    Nome = turmaRequest.Nome,
-                    Periodo = turmaRequest.Periodo,
-                    Curso = curso
-                };
-                curso.Turmas.Add(turma);
-            }
-
-            // Adiciona as disciplinas associadas
-            foreach (var disciplinaRequest in request.Disciplinas)
-            {
-                var disciplina = new Disciplina
-                {
-                    Nome = disciplinaRequest.Nome,
-                    Descricao = disciplinaRequest.Descricao,
-                    Curso = curso
-                };
-                curso.Disciplinas.Add(disciplina);
-            }
 
             _context.Cursos.Add(curso);
             await _context.SaveChangesAsync();
 
-            // Inclui as disciplinas ao buscar o curso
-            var cursoComFaculdade = await _context.Cursos
-                .Include(c => c.Faculdade)
-                .Include(c => c.Turmas)
-                .Include(c => c.Disciplinas)
-                .FirstOrDefaultAsync(c => c.Id == curso.Id);
-
-            if (cursoComFaculdade == null)
-                return BadRequest("Curso não encontrado.");
-
-            var response = new CursoResponse
+            return CreatedAtAction(nameof(GetCurso), new { id = curso.Id }, new CursoResponse
             {
-                Id = cursoComFaculdade.Id,
-                Nome = cursoComFaculdade.Nome,
-                Mensalidade = cursoComFaculdade.Mensalidade,
-                FaculdadeId = cursoComFaculdade.FaculdadeId,
-                FaculdadeNome = cursoComFaculdade.Faculdade?.Nome,
-                Turmas = cursoComFaculdade.Turmas.Select(t => new TurmaResponse
-                {
-                    Id = t.Id,
-                    Nome = t.Nome,
-                    Periodo = t.Periodo
-                }).ToList(),
-                Disciplinas = cursoComFaculdade.Disciplinas.Select(d => new DisciplinaResponse
-                {
-                    Nome = d.Nome,
-                    Descricao = d.Descricao
-                }).ToList()
-            };
-
-            return CreatedAtAction(nameof(GetCurso), new { id = cursoComFaculdade.Id }, response);
+                Id = curso.Id,
+                Nome = curso.Nome,
+                FaculdadeId = curso.FaculdadeId,
+                FaculdadeNome = faculdade.Nome
+            });
         }
 
         // Atualizar um curso
@@ -208,9 +202,21 @@ namespace CS.API.Controllers
             if (curso == null)
                 return NotFound();
 
-            curso.Nome = request.Nome;
             curso.Mensalidade = request.Mensalidade;
-            curso.FaculdadeId = request.FaculdadeId;
+
+            // Valida a quantidade de turmas
+            if (request.Turmas.Count != request.QuantidadeTurmas)
+                return BadRequest("A quantidade de turmas fornecida não corresponde à quantidade especificada.");
+
+            // Verifica duplicidade de períodos
+            var periodosDuplicados = request.Turmas
+                .GroupBy(t => t.Periodo)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (periodosDuplicados.Any())
+                return BadRequest($"Os seguintes períodos foram repetidos: {string.Join(", ", periodosDuplicados)}.");
 
             // Atualiza as turmas
             var turmasExistentes = curso.Turmas.ToList();
@@ -270,7 +276,6 @@ namespace CS.API.Controllers
                 }
             }
 
-            // Salva as alterações
             await _context.SaveChangesAsync();
 
             return NoContent();

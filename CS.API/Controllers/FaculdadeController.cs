@@ -94,8 +94,27 @@ public class FaculdadeController : ControllerBase
                 CEP = request.Endereco.CEP
             },
             Tipo = request.Tipo,
-            UserCPF = user.CPF
+            UserCPF = user.CPF,
+            Cursos = new List<Curso>()
         };
+
+        if (request.CursosOferecidos != null && request.CursosOferecidos.Any())
+        {
+            var cursos = await _context.Cursos
+                .Where(c => request.CursosOferecidos.Any(nome => c.Nome.Contains(nome)))
+                .ToListAsync();
+
+            if (cursos.Count != request.CursosOferecidos.Count)
+            {
+                return BadRequest("Alguns dos cursos fornecidos não foram encontrados no banco de dados.");
+            }
+
+            faculdade.Cursos = cursos;
+        }
+
+        _context.Faculdades.Add(faculdade);
+        await _context.SaveChangesAsync();
+
 
         _context.Faculdades.Add(faculdade);
         await _context.SaveChangesAsync();
@@ -134,6 +153,50 @@ public class FaculdadeController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpPut("atualizar-cursos/{faculdadeId}")]
+    public async Task<IActionResult> AtualizarCursos(int faculdadeId, [FromBody] AtualizarCursosRequest request)
+    {
+        // Busca a faculdade com seus cursos
+        var faculdade = await _context.Faculdades
+            .Include(f => f.Cursos)
+            .FirstOrDefaultAsync(f => f.Id == faculdadeId);
+
+        if (faculdade == null)
+            return NotFound("Faculdade não encontrada.");
+
+        // Busca os cursos selecionados pelo usuário
+        var cursosParaAdicionar = await _context.Cursos
+            .Where(c => request.CursosOferecidos.Contains(c.Id))
+            .ToListAsync();
+
+        if (cursosParaAdicionar.Count != request.CursosOferecidos.Count)
+            return BadRequest("Alguns cursos não foram encontrados.");
+
+        // 1. Remover os cursos que não estão mais na lista do request
+        var cursosAExcluir = faculdade.Cursos
+            .Where(c => !request.CursosOferecidos.Contains(c.Id))
+            .ToList();
+
+        foreach (var curso in cursosAExcluir)
+        {
+            faculdade.Cursos.Remove(curso);
+        }
+
+        // 2. Adicionar os cursos que não estavam previamente associados
+        foreach (var curso in cursosParaAdicionar)
+        {
+            if (!faculdade.Cursos.Contains(curso)) 
+            {
+                faculdade.Cursos.Add(curso);
+            }
+        }
+
+        // Salva as alterações no banco
+        await _context.SaveChangesAsync();
+
+        return Ok(faculdade);
     }
 
     // DELETE: api/Faculdade/{id}
@@ -177,7 +240,7 @@ public class FaculdadeController : ControllerBase
             {
                 Id = c.Id,
                 Nome = c.Nome,
-                Mensalidade = c.Mensalidade, 
+                Mensalidade = c.Mensalidade,
                 FaculdadeId = c.FaculdadeId,
                 FaculdadeNome = c.Faculdade.Nome,
                 ColaboradorNome = c.Colaborador?.Nome,

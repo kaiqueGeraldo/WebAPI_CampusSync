@@ -1,5 +1,6 @@
 ﻿using CS.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CS.API.Data
 {
@@ -63,7 +64,6 @@ namespace CS.API.Data
                 .HasForeignKey<Colaborador>(c => c.CursoId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-
             // Configuração do relacionamento Faculdade -> Endereco
             modelBuilder.Entity<Faculdade>()
                 .HasOne(f => f.Endereco)
@@ -74,22 +74,22 @@ namespace CS.API.Data
             // Configuração do relacionamento Estudante -> Endereco
             modelBuilder.Entity<Estudante>()
                 .HasOne(p => p.Endereco)
-                .WithOne() 
-                .HasForeignKey<Estudante>(p => p.CPF) 
+                .WithOne()
+                .HasForeignKey<Estudante>(p => p.CPF)
                 .OnDelete(DeleteBehavior.Cascade); // Quando Estudante for excluído, exclui o Endereço
 
             // Configuração do relacionamento Colaborador -> Endereco
             modelBuilder.Entity<Colaborador>()
                 .HasOne(p => p.Endereco)
-                .WithOne() 
-                .HasForeignKey<Colaborador>(p => p.CPF) 
+                .WithOne()
+                .HasForeignKey<Colaborador>(p => p.CPF)
                 .OnDelete(DeleteBehavior.Cascade); // Quando Colaborador for excluído, exclui o Endereço
-            
+
             // Configuração do relacionamento Pessoa -> Endereco
             modelBuilder.Entity<Pessoa>()
                 .HasOne(p => p.Endereco)
-                .WithOne() 
-                .HasForeignKey<Pessoa>(p => p.Id) 
+                .WithOne()
+                .HasForeignKey<Pessoa>(p => p.Id)
                 .OnDelete(DeleteBehavior.NoAction);
 
             base.OnModelCreating(modelBuilder);

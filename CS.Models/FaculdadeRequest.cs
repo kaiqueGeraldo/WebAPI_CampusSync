@@ -10,6 +10,7 @@ namespace CS.Models
         public string EmailResponsavel { get; set; }
         public EnderecoRequest Endereco { get; set; }
         public Faculdade.TipoFacul Tipo { get; set; }
+        public List<string> CursosOferecidos { get; set; }
         public string UserCPF { get; set; }
     }
 }
