@@ -52,6 +52,26 @@ public class UserController : ControllerBase
         return Ok(usuarioDTO);
     }
 
+    // Endpoint para verificar se um CPF está cadastrado
+    [HttpGet("verify-cpf")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyCpf([FromQuery] string cpf)
+    {
+        if (!IsValidCpf(cpf))
+        {
+            return BadRequest("CPF inválido.");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.CPF == cpf);
+
+        if (user == null)
+        {
+            return NotFound("CPF não encontrado.");
+        }
+
+        return Ok(new { Message = "CPF está cadastrado." });
+    }
+
     // Endpoint para verificar se um e-mail está cadastrado
     [HttpGet("verify-email")]
     [AllowAnonymous]
@@ -136,6 +156,34 @@ public class UserController : ControllerBase
             .ToListAsync();
 
         return Ok(users);
+    }
+
+    // Função auxiliar para validar cpf
+    public bool IsValidCpf(string cpf)
+    {
+        cpf = new string(cpf.Where(char.IsDigit).ToArray());
+
+        if (cpf.Length != 11)
+            return false;
+
+        int CalculateDigit(List<int> digits, int factor)
+        {
+            int sum = 0;
+            for (int i = 0; i < digits.Count; i++)
+            {
+                sum += digits[i] * factor--;
+            }
+
+            int remainder = (sum * 10) % 11;
+            return remainder == 10 ? 0 : remainder;
+        }
+
+        var digits = cpf.Select(c => int.Parse(c.ToString())).ToList();
+
+        int digit1 = CalculateDigit(digits.Take(9).ToList(), 10);
+        int digit2 = CalculateDigit(digits.Take(10).ToList(), 11);
+
+        return digit1 == digits[9] && digit2 == digits[10];
     }
 
     // Função auxiliar para validar e-mails
