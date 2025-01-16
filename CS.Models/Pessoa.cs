@@ -16,7 +16,8 @@
         public string Escolaridade { get; set; } = string.Empty;
         public string NomePai { get; set; } = string.Empty;
         public string NomeMae { get; set; } = string.Empty;
-        public Endereco Endereco { get; set; } = new Endereco();
+        public int EnderecoId { get; set; }
+        public Endereco Endereco { get; set; }
         public string UrlImagePerfil { get; set; } = string.Empty;
     }
 }

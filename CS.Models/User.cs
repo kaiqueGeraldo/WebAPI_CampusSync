@@ -18,5 +18,7 @@ namespace CS.Models
         public string? UniversidadeContatoInfo { get; set; } = string.Empty;
 
         public ICollection<Faculdade> Faculdades { get; set; } = new List<Faculdade>();
+
+        public ICollection<Colaborador> Colaboradores { get; set; } = new List<Colaborador>();
     }
 }

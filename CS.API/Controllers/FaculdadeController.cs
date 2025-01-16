@@ -2,16 +2,19 @@
 using CS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NuGet.Packaging;
 
 [ApiController]
 [Route("api/[controller]")]
 public class FaculdadeController : ControllerBase
 {
     private readonly ProjetoDbContext _context;
+    private readonly ILogger<FaculdadeController> _logger;
 
-    public FaculdadeController(ProjetoDbContext context)
+    public FaculdadeController(ProjetoDbContext context, ILogger<FaculdadeController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     // GET: api/Faculdade?cpf=12345678900
@@ -24,11 +27,31 @@ public class FaculdadeController : ControllerBase
         }
 
         var faculdades = await _context.Faculdades
-            .Include(f => f.User)
-            .Include(f => f.Cursos)
-            .Include(f => f.Endereco)
             .Where(f => f.UserCPF == cpf)
-            .Select(f => MapFaculdadeToResponse(f))
+            .Select(f => new FaculdadeResponse
+            {
+                Id = f.Id,
+                Nome = f.Nome,
+                CNPJ = f.CNPJ,
+                Telefone = f.Telefone,
+                EmailResponsavel = f.EmailResponsavel,
+                Tipo = f.Tipo,
+                Endereco = new EnderecoRequest
+                {
+                    Logradouro = f.Endereco.Logradouro,
+                    Numero = f.Endereco.Numero,
+                    Bairro = f.Endereco.Bairro,
+                    Cidade = f.Endereco.Cidade,
+                    Estado = f.Endereco.Estado,
+                    CEP = f.Endereco.CEP
+                },
+                Cursos = f.Cursos.Select(c => new CursoResponse
+                {
+                    Id = c.Id,
+                    Nome = c.Nome
+                }).ToList(),
+                UniversidadeNome = f.User.UniversidadeNome
+            })
             .ToListAsync();
 
         if (!faculdades.Any())
@@ -114,41 +137,64 @@ public class FaculdadeController : ControllerBase
     }
 
 
-    // PUT: api/Faculdade/{id}
     [HttpPut("{id}")]
     public async Task<IActionResult> AtualizarFaculdade(int id, FaculdadeRequest request)
     {
-        var faculdade = await _context.Faculdades.Include(f => f.User).FirstOrDefaultAsync(f => f.Id == id);
+        var faculdade = await _context.Faculdades.Include(f => f.Endereco).FirstOrDefaultAsync(f => f.Id == id);
 
         if (faculdade == null)
         {
-            return NotFound();
+            return NotFound("Faculdade não encontrada.");
         }
 
-        if (faculdade.User == null)
+        // Verificar se os valores foram passados no request e, se sim, atualizar
+        if (!string.IsNullOrWhiteSpace(request.Nome))
+            faculdade.Nome = request.Nome;
+
+        if (!string.IsNullOrWhiteSpace(request.CNPJ))
+            faculdade.CNPJ = request.CNPJ;
+
+        if (!string.IsNullOrWhiteSpace(request.Telefone))
+            faculdade.Telefone = request.Telefone;
+
+        if (!string.IsNullOrWhiteSpace(request.EmailResponsavel))
+            faculdade.EmailResponsavel = request.EmailResponsavel;
+
+        if (request.Tipo != null)
+            faculdade.Tipo = request.Tipo;
+
+        // Se o endereço for passado, atualize apenas os campos que são fornecidos
+        if (request.Endereco != null)
         {
-            return BadRequest("Faculdade não está associada a um usuário válido.");
+            if (!string.IsNullOrWhiteSpace(request.Endereco.Logradouro))
+                faculdade.Endereco.Logradouro = request.Endereco.Logradouro;
+
+            if (!string.IsNullOrWhiteSpace(request.Endereco.Numero))
+                faculdade.Endereco.Numero = request.Endereco.Numero;
+
+            if (!string.IsNullOrWhiteSpace(request.Endereco.Bairro))
+                faculdade.Endereco.Bairro = request.Endereco.Bairro;
+
+            if (!string.IsNullOrWhiteSpace(request.Endereco.Cidade))
+                faculdade.Endereco.Cidade = request.Endereco.Cidade;
+
+            if (!string.IsNullOrWhiteSpace(request.Endereco.Estado))
+                faculdade.Endereco.Estado = request.Endereco.Estado;
+
+            if (!string.IsNullOrWhiteSpace(request.Endereco.CEP))
+                faculdade.Endereco.CEP = request.Endereco.CEP;
         }
 
-        faculdade.Nome = request.Nome;
-        faculdade.CNPJ = request.CNPJ;
-        faculdade.Telefone = request.Telefone;
-        faculdade.EmailResponsavel = request.EmailResponsavel;
-        faculdade.Endereco.Logradouro = request.Endereco.Logradouro;
-        faculdade.Endereco.Numero = request.Endereco.Numero;
-        faculdade.Endereco.Bairro = request.Endereco.Bairro;
-        faculdade.Endereco.Cidade = request.Endereco.Cidade;
-        faculdade.Endereco.Estado = request.Endereco.Estado;
-        faculdade.Endereco.CEP = request.Endereco.CEP;
-        faculdade.Tipo = request.Tipo;
+        if (!string.IsNullOrWhiteSpace(request.UserCPF))
+            faculdade.UserCPF = request.UserCPF;
 
         await _context.SaveChangesAsync();
 
         return NoContent();
     }
 
-    [HttpPut("atualizar-cursos/{faculdadeId}")]
-    public async Task<IActionResult> AtualizarCursos(int faculdadeId, [FromBody] AtualizarCursosRequest request)
+    [HttpPut("adicionar-cursos/{faculdadeId}")]
+    public async Task<IActionResult> AdicionarCursos(int faculdadeId, [FromBody] AdicionarCursosRequest request)
     {
         // Busca a faculdade com seus cursos
         var faculdade = await _context.Faculdades
@@ -158,54 +204,66 @@ public class FaculdadeController : ControllerBase
         if (faculdade == null)
             return NotFound("Faculdade não encontrada.");
 
-        // Busca os cursos selecionados pelo usuário
-        var cursosParaAdicionar = await _context.Cursos
-            .Where(c => request.CursosOferecidos.Contains(c.Id))
-            .ToListAsync();
-
-        if (cursosParaAdicionar.Count != request.CursosOferecidos.Count)
-            return BadRequest("Alguns cursos não foram encontrados.");
-
-        // 1. Remover os cursos que não estão mais na lista do request
-        var cursosAExcluir = faculdade.Cursos
-            .Where(c => !request.CursosOferecidos.Contains(c.Id))
+        // Identifica cursos que já existem na faculdade
+        var nomesCursosExistentes = faculdade.Cursos.Select(c => c.Nome).ToList();
+        var nomesCursosParaAdicionar = request.CursosOferecidos
+            .Where(nome => !nomesCursosExistentes.Contains(nome))
+            .Distinct()
             .ToList();
 
-        foreach (var curso in cursosAExcluir)
-        {
-            faculdade.Cursos.Remove(curso);
-        }
+        if (!nomesCursosParaAdicionar.Any())
+            return BadRequest("Nenhum curso novo para adicionar.");
 
-        // 2. Adicionar os cursos que não estavam previamente associados
-        foreach (var curso in cursosParaAdicionar)
-        {
-            if (!faculdade.Cursos.Contains(curso)) 
+        var novosCursos = nomesCursosParaAdicionar
+            .Select(nome => new Curso
             {
-                faculdade.Cursos.Add(curso);
-            }
-        }
+                Nome = nome,
+                FaculdadeId = faculdadeId
+            })
+            .ToList();
 
-        // Salva as alterações no banco
+        _context.Cursos.AddRange(novosCursos);
+        faculdade.Cursos.AddRange(novosCursos);
+
         await _context.SaveChangesAsync();
 
-        return Ok(faculdade);
+        return Ok(faculdade.Cursos);
     }
 
     // DELETE: api/Faculdade/{id}
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeletarFaculdade(int id)
+    public async Task<IActionResult> DeleteFaculdade(int id)
     {
-        var faculdade = await _context.Faculdades.FindAsync(id);
-
-        if (faculdade == null)
+        try
         {
-            return NotFound();
+            var faculdade = await _context.Faculdades
+                .Include(f => f.Cursos)
+                    .ThenInclude(c => c.Turmas)
+                        .ThenInclude(t => t.Estudantes)
+                .Include(f => f.Cursos)
+                    .ThenInclude(c => c.Disciplinas)
+                .Include(f => f.Cursos)
+                    .ThenInclude(c => c.Colaborador)
+                .FirstOrDefaultAsync(f => f.Id == id);
+
+            if (faculdade == null)
+            {
+                return NotFound(new { message = "Faculdade não encontrada." });
+            }
+
+            // Removendo a faculdade e seus relacionamentos em cascata
+            _context.Faculdades.Remove(faculdade);
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-
-        _context.Faculdades.Remove(faculdade);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            // Logando o erro
+            _logger.LogError($"Erro ao excluir faculdade: {ex.Message} - {ex.StackTrace}");
+            return StatusCode(500, new { message = "Erro interno do servidor. Tente novamente mais tarde." });
+        }
     }
 
     private static FaculdadeResponse MapFaculdadeToResponse(Faculdade faculdade)
@@ -235,7 +293,7 @@ public class FaculdadeController : ControllerBase
                 Mensalidade = c.Mensalidade,
                 FaculdadeId = c.FaculdadeId,
                 FaculdadeNome = c.Faculdade.Nome,
-                ColaboradorNome = c.Colaborador?.Nome,
+                ColaboradorNome = c.Colaborador?.Pessoa.Nome,
             }).ToList()
         };
     }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CS.API.Migrations
 {
     [DbContext(typeof(ProjetoDbContext))]
-    [Migration("20241213024151_Initial")]
+    [Migration("20241223064428_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -24,6 +24,55 @@ namespace CS.API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("CS.Models.Colaborador", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Cargo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("CursoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("DataAdmissao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NumeroRegistro")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PessoaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserCPF")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserCPFColaboradores")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CursoId")
+                        .IsUnique()
+                        .HasFilter("[CursoId] IS NOT NULL");
+
+                    b.HasIndex("PessoaId")
+                        .IsUnique();
+
+                    b.HasIndex("UserCPF");
+
+                    b.HasIndex("UserCPFColaboradores")
+                        .IsUnique();
+
+                    b.ToTable("Colaboradores");
+                });
 
             modelBuilder.Entity("CS.Models.Curso", b =>
                 {
@@ -114,10 +163,44 @@ namespace CS.API.Migrations
                     b.ToTable("Enderecos");
                 });
 
+            modelBuilder.Entity("CS.Models.Estudante", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DataMatricula")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NumeroMatricula")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PessoaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TurmaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PessoaId")
+                        .IsUnique();
+
+                    b.HasIndex("TurmaId");
+
+                    b.ToTable("Estudantes");
+                });
+
             modelBuilder.Entity("CS.Models.Pessoa", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("CPF")
                         .IsRequired()
@@ -130,14 +213,12 @@ namespace CS.API.Migrations
                     b.Property<DateTime>("DataNascimento")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(13)
-                        .HasColumnType("nvarchar(13)");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EnderecoId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Escolaridade")
                         .IsRequired()
@@ -181,11 +262,10 @@ namespace CS.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EnderecoId")
+                        .IsUnique();
+
                     b.ToTable("Pessoas");
-
-                    b.HasDiscriminator().HasValue("Pessoa");
-
-                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("CS.Models.Turma", b =>
@@ -252,7 +332,10 @@ namespace CS.API.Migrations
             modelBuilder.Entity("Faculdade", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("CNPJ")
                         .IsRequired()
@@ -261,6 +344,9 @@ namespace CS.API.Migrations
                     b.Property<string>("EmailResponsavel")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EnderecoId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -279,6 +365,8 @@ namespace CS.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EnderecoId");
+
                     b.HasIndex("UserCPF");
 
                     b.ToTable("Faculdades");
@@ -286,54 +374,32 @@ namespace CS.API.Migrations
 
             modelBuilder.Entity("CS.Models.Colaborador", b =>
                 {
-                    b.HasBaseType("CS.Models.Pessoa");
+                    b.HasOne("CS.Models.Curso", "Curso")
+                        .WithOne("Colaborador")
+                        .HasForeignKey("CS.Models.Colaborador", "CursoId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
-                    b.Property<string>("Cargo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.HasOne("CS.Models.Pessoa", "Pessoa")
+                        .WithOne()
+                        .HasForeignKey("CS.Models.Colaborador", "PessoaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Property<int?>("CursoId")
-                        .HasColumnType("int");
+                    b.HasOne("CS.Models.User", null)
+                        .WithMany("Colaboradores")
+                        .HasForeignKey("UserCPF");
 
-                    b.Property<DateTime>("DataAdmissao")
-                        .HasColumnType("datetime2");
+                    b.HasOne("CS.Models.User", "User")
+                        .WithOne()
+                        .HasForeignKey("CS.Models.Colaborador", "UserCPFColaboradores")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
-                    b.Property<string>("NumeroRegistro")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Navigation("Curso");
 
-                    b.HasIndex("CursoId")
-                        .IsUnique()
-                        .HasFilter("[CursoId] IS NOT NULL");
+                    b.Navigation("Pessoa");
 
-                    b.HasDiscriminator().HasValue("Colaborador");
-                });
-
-            modelBuilder.Entity("CS.Models.Estudante", b =>
-                {
-                    b.HasBaseType("CS.Models.Pessoa");
-
-                    b.Property<DateTime>("DataMatricula")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("NumeroMatricula")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TelefoneMae")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TelefonePai")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TurmaId")
-                        .HasColumnType("int");
-
-                    b.HasIndex("TurmaId");
-
-                    b.HasDiscriminator().HasValue("Estudante");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CS.Models.Curso", b =>
@@ -358,12 +424,31 @@ namespace CS.API.Migrations
                     b.Navigation("Curso");
                 });
 
+            modelBuilder.Entity("CS.Models.Estudante", b =>
+                {
+                    b.HasOne("CS.Models.Pessoa", "Pessoa")
+                        .WithOne()
+                        .HasForeignKey("CS.Models.Estudante", "PessoaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CS.Models.Turma", "Turma")
+                        .WithMany("Estudantes")
+                        .HasForeignKey("TurmaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Pessoa");
+
+                    b.Navigation("Turma");
+                });
+
             modelBuilder.Entity("CS.Models.Pessoa", b =>
                 {
                     b.HasOne("CS.Models.Endereco", "Endereco")
                         .WithOne()
-                        .HasForeignKey("CS.Models.Pessoa", "Id")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasForeignKey("CS.Models.Pessoa", "EnderecoId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Endereco");
@@ -383,8 +468,8 @@ namespace CS.API.Migrations
             modelBuilder.Entity("Faculdade", b =>
                 {
                     b.HasOne("CS.Models.Endereco", "Endereco")
-                        .WithOne()
-                        .HasForeignKey("Faculdade", "Id")
+                        .WithMany()
+                        .HasForeignKey("EnderecoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -397,27 +482,6 @@ namespace CS.API.Migrations
                     b.Navigation("Endereco");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CS.Models.Colaborador", b =>
-                {
-                    b.HasOne("CS.Models.Curso", "Curso")
-                        .WithOne("Colaborador")
-                        .HasForeignKey("CS.Models.Colaborador", "CursoId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Curso");
-                });
-
-            modelBuilder.Entity("CS.Models.Estudante", b =>
-                {
-                    b.HasOne("CS.Models.Turma", "Turma")
-                        .WithMany("Estudantes")
-                        .HasForeignKey("TurmaId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Turma");
                 });
 
             modelBuilder.Entity("CS.Models.Curso", b =>
@@ -436,6 +500,8 @@ namespace CS.API.Migrations
 
             modelBuilder.Entity("CS.Models.User", b =>
                 {
+                    b.Navigation("Colaboradores");
+
                     b.Navigation("Faculdades");
                 });
 

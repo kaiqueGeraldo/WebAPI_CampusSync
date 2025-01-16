@@ -20,5 +20,4 @@ namespace CS.Models
             Integral
         }
     }
-
 }

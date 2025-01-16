@@ -10,35 +10,60 @@ namespace CS.API.Controllers
     public class EstudanteController : ControllerBase
     {
         private readonly ProjetoDbContext _context;
+        private readonly ILogger<EstudanteController> _logger;
 
-        public EstudanteController(ProjetoDbContext context)
+        public EstudanteController(ProjetoDbContext context, ILogger<EstudanteController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
-        // GET: api/Estudante
+        // GET: api/Estudante?cpf=12345678900
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<EstudanteResponse>>> GetEstudantes()
+        public async Task<ActionResult<IEnumerable<EstudanteResponse>>> GetEstudantesPorCPF([FromQuery] string cpf)
         {
+            if (string.IsNullOrEmpty(cpf))
+            {
+                return BadRequest("O CPF deve ser informado.");
+            }
+
+            // Obter o usuário associado ao CPF
+            var user = await _context.Users
+                .Include(u => u.Faculdades)
+                .FirstOrDefaultAsync(u => u.CPF == cpf);
+
+            if (user == null)
+            {
+                return NotFound("Usuário não encontrado.");
+            }
+
+            // Obtenha os IDs das faculdades associadas ao usuário
+            var faculdadesIds = user.Faculdades.Select(f => f.Id).ToList();
+
+            // Obter os estudantes relacionados às faculdades associadas ao CPF do usuário
             var estudantes = await _context.Estudantes
                 .Include(e => e.Turma)
-               .Select(e => new EstudanteResponse
-               {
-                   Nome = e.Nome,
-                   CPF = e.CPF,
-                   RG = e.RG,
-                   Email = e.Email,
-                   Telefone = e.Telefone,
-                   NumeroMatricula = e.NumeroMatricula,
-                   DataMatricula = e.DataMatricula,
-                   DataNascimento = e.DataNascimento,
-                   NomePai = e.NomePai,
-                   NomeMae = e.NomeMae,
-                   TelefonePai = e.TelefonePai,
-                   TelefoneMae = e.TelefoneMae,
-                   Endereco = e.Endereco,
-                   TurmaNome = e.Turma != null ? e.Turma.Nome : string.Empty
-               })
+                .ThenInclude(t => t.Curso)
+                .Include(c => c.Pessoa)
+                .Where(e => e.Turma != null &&
+                            e.Turma.Curso != null &&
+                            faculdadesIds.Contains(e.Turma.Curso.FaculdadeId))
+                .Select(e => new EstudanteResponse
+                {
+                    Id = e.Pessoa.Id,
+                    Nome = e.Pessoa.Nome,
+                    CPF = e.Pessoa.CPF,
+                    RG = e.Pessoa.RG,
+                    Email = e.Pessoa.Email,
+                    Telefone = e.Pessoa.Telefone,
+                    NumeroMatricula = e.NumeroMatricula,
+                    DataMatricula = e.DataMatricula,
+                    DataNascimento = e.Pessoa.DataNascimento,
+                    NomePai = e.Pessoa.NomePai,
+                    NomeMae = e.Pessoa.NomeMae,
+                    Endereco = e.Pessoa.Endereco,
+                    TurmaNome = e.Turma != null ? e.Turma.Nome : string.Empty
+                })
                 .ToListAsync();
 
             return Ok(estudantes);
@@ -50,22 +75,22 @@ namespace CS.API.Controllers
         {
             var estudante = await _context.Estudantes
                 .Include(e => e.Turma)
+                .Include(c => c.Pessoa)
                 .Where(e => e.Id == id)
                 .Select(e => new EstudanteResponse
                 {
-                    Nome = e.Nome,
-                    CPF = e.CPF,
-                    RG = e.RG,
-                    Email = e.Email,
-                    Telefone = e.Telefone,
+                    Id = e.Id,
+                    Nome = e.Pessoa.Nome,
+                    CPF = e.Pessoa.CPF,
+                    RG = e.Pessoa.RG,
+                    Email = e.Pessoa.Email,
+                    Telefone = e.Pessoa.Telefone,
                     NumeroMatricula = e.NumeroMatricula,
                     DataMatricula = e.DataMatricula,
-                    DataNascimento = e.DataNascimento,
-                    NomePai = e.NomePai,
-                    NomeMae = e.NomeMae,
-                    TelefonePai = e.TelefonePai,
-                    TelefoneMae = e.TelefoneMae,
-                    Endereco = e.Endereco,
+                    DataNascimento = e.Pessoa.DataNascimento,
+                    NomePai = e.Pessoa.NomePai,
+                    NomeMae = e.Pessoa.NomeMae,
+                    Endereco = e.Pessoa.Endereco,
                     TurmaNome = e.Turma != null ? e.Turma.Nome : string.Empty
                 })
                 .FirstOrDefaultAsync();
@@ -82,7 +107,7 @@ namespace CS.API.Controllers
         [HttpPost]
         public async Task<ActionResult<EstudanteResponse>> CreateEstudante(EstudanteRequest estudanteRequest)
         {
-            var estudante = new Estudante
+            var pessoa = new Pessoa
             {
                 Nome = estudanteRequest.Nome,
                 CPF = estudanteRequest.CPF,
@@ -106,11 +131,17 @@ namespace CS.API.Controllers
                     Estado = estudanteRequest.Endereco.Estado,
                     CEP = estudanteRequest.Endereco.CEP
                 },
+            };
+
+            _context.Pessoas.Add(pessoa);
+            await _context.SaveChangesAsync();
+
+            var estudante = new Estudante
+            {
+                PessoaId = pessoa.Id,
                 NumeroMatricula = estudanteRequest.NumeroMatricula,
                 DataMatricula = estudanteRequest.DataMatricula,
-                TelefonePai = estudanteRequest.TelefonePai,
-                TelefoneMae = estudanteRequest.TelefoneMae,
-                TurmaId = estudanteRequest.TurmaId
+                TurmaId = estudanteRequest.TurmaId,
             };
 
             _context.Estudantes.Add(estudante);
@@ -118,19 +149,17 @@ namespace CS.API.Controllers
 
             var estudanteResponse = new EstudanteResponse
             {
-                Nome = estudante.Nome,
-                CPF = estudante.CPF,
-                RG = estudante.RG,
-                Email = estudante.Email,
-                Telefone = estudante.Telefone,
+                Nome = pessoa.Nome,
+                CPF = pessoa.CPF,
+                RG = pessoa.RG,
+                Email = pessoa.Email,
+                Telefone = pessoa.Telefone,
                 NumeroMatricula = estudante.NumeroMatricula,
                 DataMatricula = estudante.DataMatricula,
-                DataNascimento = estudante.DataNascimento,
-                NomePai = estudante.NomePai,
-                NomeMae = estudante.NomeMae,
-                TelefonePai = estudante.TelefonePai,
-                TelefoneMae = estudante.TelefoneMae,
-                Endereco = estudante.Endereco,
+                DataNascimento = pessoa.DataNascimento,
+                NomePai = pessoa.NomePai,
+                NomeMae = pessoa.NomeMae,
+                Endereco = pessoa.Endereco,
                 TurmaNome = estudante.Turma != null ? estudante.Turma.Nome : string.Empty
             };
 
@@ -146,31 +175,64 @@ namespace CS.API.Controllers
                 return BadRequest();
             }
 
-            var estudante = await _context.Estudantes.FindAsync(id);
+            var estudante = await _context.Estudantes
+                .Include(e => e.Pessoa)
+                .FirstOrDefaultAsync(e => e.Id == id);
             if (estudante == null)
             {
                 return NotFound();
             }
 
-            estudante.Nome = estudanteRequest.Nome;
-            estudante.CPF = estudanteRequest.CPF;
-            estudante.RG = estudanteRequest.RG;
-            estudante.Telefone = estudanteRequest.Telefone;
-            estudante.TituloEleitor = estudanteRequest.TituloEleitor;
-            estudante.EstadoCivil = estudanteRequest.EstadoCivil;
-            estudante.Nacionalidade = estudanteRequest.Nacionalidade;
-            estudante.CorRacaEtnia = estudanteRequest.CorRacaEtnia;
-            estudante.Escolaridade = estudanteRequest.Escolaridade;
-            estudante.NomePai = estudanteRequest.NomePai;
-            estudante.NomeMae = estudanteRequest.NomeMae;
-            estudante.DataNascimento = estudanteRequest.DataNascimento;
-            estudante.NumeroMatricula = estudanteRequest.NumeroMatricula;
-            estudante.DataMatricula = estudanteRequest.DataMatricula;
-            estudante.TelefonePai = estudanteRequest.TelefonePai;
-            estudante.TelefoneMae = estudanteRequest.TelefoneMae;
-            estudante.Endereco = estudanteRequest.Endereco;
-            estudante.TurmaId = estudanteRequest.TurmaId;
+            // Atualizar apenas os campos não nulos ou não vazios
+            if (!string.IsNullOrEmpty(estudanteRequest.Nome))
+                estudante.Pessoa.Nome = estudanteRequest.Nome;
 
+            if (!string.IsNullOrEmpty(estudanteRequest.CPF))
+                estudante.Pessoa.CPF = estudanteRequest.CPF;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.RG))
+                estudante.Pessoa.RG = estudanteRequest.RG;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.Telefone))
+                estudante.Pessoa.Telefone = estudanteRequest.Telefone;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.TituloEleitor))
+                estudante.Pessoa.TituloEleitor = estudanteRequest.TituloEleitor;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.EstadoCivil))
+                estudante.Pessoa.EstadoCivil = estudanteRequest.EstadoCivil;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.Nacionalidade))
+                estudante.Pessoa.Nacionalidade = estudanteRequest.Nacionalidade;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.CorRacaEtnia))
+                estudante.Pessoa.CorRacaEtnia = estudanteRequest.CorRacaEtnia;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.Escolaridade))
+                estudante.Pessoa.Escolaridade = estudanteRequest.Escolaridade;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.NomePai))
+                estudante.Pessoa.NomePai = estudanteRequest.NomePai;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.NomeMae))
+                estudante.Pessoa.NomeMae = estudanteRequest.NomeMae;
+
+            if (estudanteRequest.DataNascimento != null)
+                estudante.Pessoa.DataNascimento = estudanteRequest.DataNascimento;
+
+            if (!string.IsNullOrEmpty(estudanteRequest.NumeroMatricula))
+                estudante.NumeroMatricula = estudanteRequest.NumeroMatricula;
+
+            if (estudanteRequest.DataMatricula != null)
+                estudante.DataMatricula = estudanteRequest.DataMatricula;
+
+            if (estudanteRequest.Endereco != null)
+                estudante.Pessoa.Endereco = estudanteRequest.Endereco;
+
+            if (estudanteRequest.TurmaId != null)
+                estudante.TurmaId = estudanteRequest.TurmaId;
+
+            // Marca o estado da entidade como modificado
             _context.Entry(estudante).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
@@ -181,16 +243,31 @@ namespace CS.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEstudante(int id)
         {
-            var estudante = await _context.Estudantes.FindAsync(id);
-            if (estudante == null)
+            try
             {
-                return NotFound();
+                var estudante = await _context.Estudantes
+                    .Include(e => e.Pessoa)
+                    .Include(e => e.Turma)
+                    .FirstOrDefaultAsync(e => e.Id == id);
+
+                if (estudante == null)
+                {
+                    return NotFound(new { message = "Estudante não encontrado." });
+                }
+
+                // Remove o estudante e suas relações associadas
+                _context.Estudantes.Remove(estudante);
+
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Estudantes.Remove(estudante);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao excluir estudante: {ex.Message} - {ex.StackTrace}");
+                return StatusCode(500, new { message = "Erro interno do servidor. Tente novamente mais tarde." });
+            }
         }
+
     }
 }

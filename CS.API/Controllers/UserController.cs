@@ -12,11 +12,13 @@ public class UserController : ControllerBase
 {
     private readonly ProjetoDbContext _context;
     private readonly IAuthService _authService;
+    private readonly ILogger<UserController> _logger;
 
-    public UserController(ProjetoDbContext context, IAuthService authService)
+    public UserController(ProjetoDbContext context, IAuthService authService, ILogger<UserController> logger)
     {
         _context = context;
         _authService = authService;
+        _logger = logger;
     }
 
     // Endpoint para obter informações do usuário logado
@@ -52,6 +54,63 @@ public class UserController : ControllerBase
         };
 
         return Ok(usuarioDTO);
+    }
+
+    [HttpGet("achievements")]
+    [Authorize]
+    public async Task<IActionResult> GetUserAchievements()
+    {
+        var cpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(cpf))
+        {
+            return Unauthorized(new { message = "Usuário não autenticado ou CPF ausente." });
+        }
+
+        var user = await _context.Users
+                                 .AsNoTracking()
+                                 .FirstOrDefaultAsync(u => u.CPF == cpf);
+
+        if (user == null)
+        {
+            return NotFound(new { message = "Usuário não encontrado." });
+        }
+
+        // Buscar as faculdades criadas pelo usuário
+        var facultiesCreated = await _context.Faculdades
+                                             .Where(f => f.UserCPF == user.CPF)
+                                             .CountAsync();
+
+        // Buscar os cursos criados nas faculdades do usuário
+        var coursesCreated = await _context.Cursos
+                                           .Where(c => _context.Faculdades
+                                                               .Where(f => f.UserCPF == user.CPF)
+                                                               .Select(f => f.Id)
+                                                               .Contains(c.FaculdadeId))
+                                           .CountAsync();
+
+        // Buscar os estudantes matriculados nas turmas dos cursos das faculdades do usuário
+        var enrollmentsCompleted = await _context.Estudantes
+            .Where(e => _context.Turmas
+                .Where(t => _context.Cursos
+                    .Where(c => _context.Faculdades
+                        .Where(f => f.UserCPF == user.CPF)
+                        .Select(f => f.Id)
+                        .Contains(c.FaculdadeId))
+                    .Select(c => c.Id)
+                    .Contains(t.CursoId))
+                .Select(t => t.Id)
+                .Contains(e.TurmaId))
+            .CountAsync();
+
+        var achievements = new
+        {
+            FacultiesCreated = facultiesCreated,
+            CoursesCreated = coursesCreated,
+            EnrollmentsCompleted = enrollmentsCompleted
+        };
+
+        return Ok(achievements);
     }
 
     // Endpoint para verificar se um CPF está cadastrado
@@ -158,6 +217,98 @@ public class UserController : ControllerBase
             .ToListAsync();
 
         return Ok(users);
+    }
+
+    // DELETE: api/User
+    [HttpDelete]
+    [Authorize]
+    public async Task<IActionResult> DeleteUser()
+    {
+        try
+        {
+            var cpf = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(cpf))
+            {
+                return BadRequest(new { message = "CPF não encontrado nos dados de autenticação." });
+            }
+
+            var user = await _context.Users
+                .Include(u => u.Faculdades)
+                    .ThenInclude(f => f.Cursos)
+                        .ThenInclude(c => c.Turmas)
+                            .ThenInclude(t => t.Estudantes)
+                .Include(u => u.Faculdades)
+                    .ThenInclude(f => f.Cursos)
+                        .ThenInclude(c => c.Disciplinas)
+                .Include(u => u.Faculdades)
+                    .ThenInclude(f => f.Cursos)
+                        .ThenInclude(c => c.Colaborador)
+                .Include(u => u.Colaboradores)
+                .FirstOrDefaultAsync(u => u.CPF == cpf);
+
+            if (user == null)
+            {
+                return NotFound(new { message = "Usuário não encontrado." });
+            }
+
+            // Exclusão manual das dependências
+            if (user.Faculdades != null)
+            {
+                foreach (var faculdade in user.Faculdades)
+                {
+                    if (faculdade.Cursos != null)
+                    {
+                        foreach (var curso in faculdade.Cursos)
+                        {
+                            if (curso.Turmas != null)
+                            {
+                                foreach (var turma in curso.Turmas)
+                                {
+                                    if (turma.Estudantes != null && turma.Estudantes.Any())
+                                    {
+                                        _context.Estudantes.RemoveRange(turma.Estudantes);
+                                    }
+                                    _context.Turmas.Remove(turma);
+                                }
+                            }
+
+                            if (curso.Disciplinas != null && curso.Disciplinas.Any())
+                            {
+                                _context.Disciplinas.RemoveRange(curso.Disciplinas);
+                            }
+
+                            if (curso.Colaborador != null)
+                            {
+                                _context.Colaboradores.Remove(curso.Colaborador);
+                            }
+
+                            _context.Cursos.Remove(curso);
+                        }
+                    }
+
+                    _context.Faculdades.Remove(faculdade);
+                }
+            }
+
+            if (user.Colaboradores != null && user.Colaboradores.Any())
+            {
+                _context.Colaboradores.RemoveRange(user.Colaboradores);
+            }
+
+            // Removendo o usuário
+            _context.Users.Remove(user);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Usuário deletado com sucesso." });
+        }
+        catch (Exception ex)
+        {
+            // Logando o erro
+            _logger.LogError($"Erro ao excluir conta: {ex.Message} - {ex.StackTrace}");
+            return StatusCode(500, new { message = "Erro interno do servidor. Tente novamente mais tarde." });
+        }
     }
 
     // Função auxiliar para validar cpf

@@ -1,6 +1,5 @@
 ﻿using CS.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace CS.API.Data
 {
@@ -22,75 +21,96 @@ namespace CS.API.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configuração do relacionamento User -> Faculdade
+            // User -> Faculdade
             modelBuilder.Entity<User>()
                 .HasMany(u => u.Faculdades)
                 .WithOne(f => f.User)
                 .HasForeignKey(f => f.UserCPF)
-                .OnDelete(DeleteBehavior.Cascade); // Quando User for excluído, exclui as Faculdades relacionadas
+                .OnDelete(DeleteBehavior.Cascade); // Faculdades serão excluídas ao excluir o User.
 
-            // Configuração do relacionamento Faculdade -> Curso
+            // Faculdade -> Cursos
             modelBuilder.Entity<Faculdade>()
                 .HasMany(f => f.Cursos)
                 .WithOne(c => c.Faculdade)
                 .HasForeignKey(c => c.FaculdadeId)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Faculdade for excluída, exclui os Cursos relacionados
+                .OnDelete(DeleteBehavior.Cascade); // Cursos serão excluídos ao excluir a Faculdade.
 
-            // Configuração do relacionamento Curso -> Turma
+            // Faculdade -> Colaboradores
+            modelBuilder.Entity<User>()
+                .HasMany(f => f.Colaboradores)
+                .WithOne()
+                .HasForeignKey(f => f.UserCPFColaboradores)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Colaboradores -> Faculdade
+            modelBuilder.Entity<Colaborador>()
+                .HasOne(f => f.User)
+                .WithOne()
+                .HasForeignKey<Colaborador>(f => f.UserCPFColaboradores)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Curso -> Turmas
             modelBuilder.Entity<Curso>()
                 .HasMany(c => c.Turmas)
                 .WithOne(t => t.Curso)
                 .HasForeignKey(t => t.CursoId)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Curso for excluído, exclui as Turmas
+                .OnDelete(DeleteBehavior.Cascade); // Turmas serão excluídas ao excluir o Curso.
 
-            // Configuração do relacionamento Curso -> Disciplina
+            // Curso -> Disciplinas
             modelBuilder.Entity<Curso>()
                 .HasMany(c => c.Disciplinas)
                 .WithOne(d => d.Curso)
                 .HasForeignKey(d => d.CursoId)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Curso for excluído, exclui as Disciplinas
+                .OnDelete(DeleteBehavior.Cascade); // Disciplinas serão excluídas ao excluir o Curso.
 
-            // Configuração do relacionamento Estudante -> Turma
+            // Turma -> Estudantes
+            modelBuilder.Entity<Turma>()
+                .HasMany(t => t.Estudantes)
+                .WithOne(e => e.Turma)
+                .HasForeignKey(e => e.TurmaId)
+                .OnDelete(DeleteBehavior.Cascade); // Estudantes serão excluídos ao excluir uma Turma.
+
+            // Estudante -> Turma
             modelBuilder.Entity<Estudante>()
                 .HasOne(e => e.Turma)
                 .WithMany(t => t.Estudantes)
                 .HasForeignKey(e => e.TurmaId)
-                .OnDelete(DeleteBehavior.NoAction); // Quando Estudante for excluído, desvincula da Turma
+                .OnDelete(DeleteBehavior.NoAction); // Turma será preservada ao excluir um Estudante.
 
-            // Configuração do relacionamento Colaborador -> Curso
+            // Curso -> Colaborador
+            modelBuilder.Entity<Curso>()
+                .HasOne(c => c.Colaborador)
+                .WithOne(co => co.Curso)
+                .HasForeignKey<Colaborador>(co => co.CursoId)
+                .OnDelete(DeleteBehavior.Cascade); // Colaborador será excluído ao excluir um Curso.
+
+            // Colaborador -> Curso
             modelBuilder.Entity<Colaborador>()
                 .HasOne(c => c.Curso)
-                .WithOne(cr => cr.Colaborador)
-                .HasForeignKey<Colaborador>(c => c.CursoId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .WithOne(co => co.Colaborador)
+                .HasForeignKey<Colaborador>(co => co.CursoId)
+                .OnDelete(DeleteBehavior.NoAction); // Curso será preservado ao excluir um Colaborador.
 
-            // Configuração do relacionamento Faculdade -> Endereco
-            modelBuilder.Entity<Faculdade>()
-                .HasOne(f => f.Endereco)
-                .WithOne()
-                .HasForeignKey<Faculdade>(f => f.Id)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Faculdade for excluída, exclui o Endereço
-
-            // Configuração do relacionamento Estudante -> Endereco
+            // Estudante -> Pessoa
             modelBuilder.Entity<Estudante>()
-                .HasOne(p => p.Endereco)
+                .HasOne(e => e.Pessoa)
                 .WithOne()
-                .HasForeignKey<Estudante>(p => p.CPF)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Estudante for excluído, exclui o Endereço
+                .HasForeignKey<Estudante>(e => e.PessoaId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Configuração do relacionamento Colaborador -> Endereco
-            modelBuilder.Entity<Colaborador>()
-                .HasOne(p => p.Endereco)
-                .WithOne()
-                .HasForeignKey<Colaborador>(p => p.CPF)
-                .OnDelete(DeleteBehavior.Cascade); // Quando Colaborador for excluído, exclui o Endereço
-
-            // Configuração do relacionamento Pessoa -> Endereco
+            // Pessoa -> Endereço
             modelBuilder.Entity<Pessoa>()
                 .HasOne(p => p.Endereco)
                 .WithOne()
-                .HasForeignKey<Pessoa>(p => p.Id)
-                .OnDelete(DeleteBehavior.NoAction);
+                .HasForeignKey<Pessoa>(p => p.EnderecoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Colaborador -> Pessoa
+            modelBuilder.Entity<Colaborador>()
+                .HasOne(c => c.Pessoa)
+                .WithOne()
+                .HasForeignKey<Colaborador>(c => c.PessoaId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }
