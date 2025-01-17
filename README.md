@@ -40,7 +40,7 @@ A API **CampusSync** fornece funcionalidades para gerenciar faculdades, cursos, 
 1. Clone o repositório:
 
   ```bash
-   git clone https://github.com/kaiqueGeraldo/campussync-api.git
+   git clone https://github.com/kaiqueGeraldo/WebAPI_CampusSync.git
   ```
 
 2. Navegue até o diretório do projeto:
