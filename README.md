@@ -1,6 +1,6 @@
 # API do Projeto CampusSync
 
-Bem-vindo à documentação da API do **CampusSync**, um sistema de gerenciamento de faculdades, cursos, alunos, professores e mais. Esta API foi construída utilizando o framework **.NET** e serve como backend para o aplicativo Flutter.
+Bem-vindo à documentação da API do **CampusSync**, um sistema de gerenciamento de faculdades, cursos, alunos e mais. Esta API foi construída utilizando o framework **.NET** e serve como backend para o aplicativo Flutter.
 
 ## Índice
 
@@ -218,5 +218,14 @@ dotnet test
 ```
 
 ## Licença
-Este projeto está licenciado sob a MIT License. Consulte o arquivo LICENSE para mais detalhes.
- 
+Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## Autores
+- **Kaique Geraldo** - [LinkedIn](https://www.linkedin.com/in/kaique-geraldo) | [GitHub](https://github.com/kaiqueGeraldo)
+
+---
+
+## Links Úteis
+- [Documentação do .NET](https://learn.microsoft.com/pt-br/dotnet/)
