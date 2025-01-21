@@ -50,7 +50,7 @@ namespace CS.API.Controllers
                             faculdadesIds.Contains(e.Turma.Curso.FaculdadeId))
                 .Select(e => new EstudanteResponse
                 {
-                    Id = e.Pessoa.Id,
+                    Id = e.Id,
                     Nome = e.Pessoa.Nome,
                     CPF = e.Pessoa.CPF,
                     RG = e.Pessoa.RG,
@@ -75,7 +75,7 @@ namespace CS.API.Controllers
         {
             var estudante = await _context.Estudantes
                 .Include(e => e.Turma)
-                .Include(c => c.Pessoa)
+                .Include(e => e.Pessoa)
                 .Where(e => e.Id == id)
                 .Select(e => new EstudanteResponse
                 {
