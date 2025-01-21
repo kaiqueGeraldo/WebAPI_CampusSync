@@ -73,7 +73,7 @@ A API utiliza JWT para autenticação. Para obter um token de acesso, faça uma 
 Exemplo de Requisição:
 
 ```bash
-POST /api/Users/login
+POST /api/Auth/login
 {
   "cpf": "12345678901",
   "senha": "senha123"
@@ -88,9 +88,9 @@ Authorization: Bearer <seu_token_jwt>
 ---
 ## EndPoints
 
-**Usuários**
+## Usuários
 
-**POST /api/Users/login**
+**POST /api/Auth/login**
 
 Autentica um usuário e retorna um token JWT.
 
@@ -110,13 +110,9 @@ Resposta:
 }
 ```
 
-**GET /api/Users/{cpf}**
+**GET /api/User/profile**
 
-Recupera as informações do usuário.
-
-**Parâmetros:**
-
-cpf: O CPF do usuário.
+Recupera as informações do usuário autenticado.
 
 **Resposta:**
 
@@ -128,11 +124,15 @@ cpf: O CPF do usuário.
 }
 ```
 
-**Faculdades**
+## Faculdades
 
-**GET /api/Faculdades**
+**GET /api/Faculdade/?cpf={cpf}**
 
-Lista todas as faculdades.
+Lista todas as faculdades de um usuário.
+
+**Paramêtros**
+
+{cpf}: CPF do usuário.
 
 **Resposta:**
 
@@ -149,7 +149,7 @@ Lista todas as faculdades.
 ]
 ```
 
-**POST /api/Faculdades**
+**POST /api/Faculdade**
 
 Cria uma nova faculdade.
 
@@ -157,7 +157,8 @@ Cria uma nova faculdade.
 
 ```bash
 {
-  "nome": "Nova Faculdade"
+  "nome": "Nova Faculdade",
+  "userCPF": "12345678900"
 }
 ```
 **Resposta:**
@@ -169,9 +170,9 @@ Cria uma nova faculdade.
 }
 ```
 
-**Cursos**
+## Cursos
 
-**POST /api/Cursos**
+**POST /api/Curso**
 
 Cria um novo curso e associa a uma faculdade.
 
@@ -200,16 +201,16 @@ Cria um novo curso e associa a uma faculdade.
 **Autenticação**
 
 ```bash
-curl -X POST http://localhost:5000/api/Users/login -H "Content-Type: application/json" -d '{"cpf":"12345678901","senha":"senha123"}'
+curl -X POST http://localhost:5000/api/Auth/login -H "Content-Type: application/json" -d '{"cpf":"12345678901","senha":"senha123"}'
 ```
 
-**Obter Informações do Usuário**
+**Obter Informações do Usuário autenticado**
 
 ```bash
-curl -X GET http://localhost:5000/api/Users/12345678901 -H "Authorization: Bearer seu_token_jwt_aqui"
+curl -X GET http://localhost:5000/api/User/profile -H "Authorization: Bearer seu_token_jwt_aqui"
 ```
 
-**Testes e Qualidade de Código**
+## Testes e Qualidade de Código
 
 A API é testada utilizando o xUnit. Para executar os testes, basta rodar o seguinte comando:
 
